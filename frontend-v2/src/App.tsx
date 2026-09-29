@@ -13,6 +13,10 @@ import { Evidence } from "./pages/Evidence";
 import { Challenges } from "./pages/Challenges";
 import { Settlement } from "./pages/Settlement";
 
+function NotFound() {
+  return <div className="flex min-h-screen items-center justify-center bg-[#06070a] p-8 text-center text-white"><div><h1 className="text-3xl font-bold">Page not found</h1><p className="mt-2 text-slate-400">The requested route does not exist.</p></div></div>;
+}
+
 export default function App() {
   return (
     <AuthProvider>
@@ -30,6 +34,7 @@ export default function App() {
               <Route path="/settlement" element={<Settlement />} />
               <Route path="/blockchain" element={<Blockchain />} />
               <Route path="/simulator" element={<Simulator />} />
+              <Route path="*" element={<NotFound />} />
             </Route>
           </Route>
         </Routes>

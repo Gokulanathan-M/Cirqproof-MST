@@ -7,20 +7,41 @@ const fs = require('fs');
 const path = require('path');
 const Evidence = require('../models/Evidence');
 const Batch = require('../models/Batch');
+const { requireAuth } = require('../middleware/auth');
+
+router.use(requireAuth);
 
 router.post('/generate', async (req, res, next) => {
   try {
     const { batchId, material, inputWeight, processedWeight, recoveredWeight, downstreamWeight, machineRuntime, energyUsed, scenario } = req.body;
+    const normalizedScenario = String(scenario || '').toUpperCase();
+    if (!['NORMAL', 'INCONSISTENT', 'TAMPERED'].includes(normalizedScenario)) {
+      return res.status(400).json({ ok: false, error: 'Scenario must be NORMAL, INCONSISTENT, or TAMPERED' });
+    }
+    const numericValues = { inputWeight, processedWeight, recoveredWeight, downstreamWeight, machineRuntime, energyUsed };
+    if (Object.values(numericValues).some((value) => !Number.isFinite(Number(value)) || Number(value) <= 0)) {
+      return res.status(400).json({ ok: false, error: 'Simulation measurements must be positive numbers' });
+    }
+    const committedProcessedWeight = Number(processedWeight);
+    const committedDownstreamWeight = Number(downstreamWeight);
     const simEvent = {
       batchId, timestamp: new Date().toISOString(),
-      inputWeight, processedWeight, recoveredWeight, residueWeight: inputWeight - recoveredWeight,
-      downstreamWeight, machineRuntime, energyUsed, temperature: 42.1, status: 'COMPLETED', scenario
+      inputWeight: Number(inputWeight),
+      processedWeight: committedProcessedWeight,
+      recoveredWeight: Number(recoveredWeight),
+      residueWeight: Number(inputWeight) - Number(recoveredWeight),
+      downstreamWeight: committedDownstreamWeight,
+      machineRuntime: Number(machineRuntime),
+      energyUsed: Number(energyUsed),
+      temperature: 42.1,
+      status: 'COMPLETED',
+      scenario: normalizedScenario,
     };
     
     // Create batch if not exists
     let batch = await Batch.findOne({ batchId });
     if (!batch) {
-      batch = await Batch.create({ batchId, material, claim: { quantity: recoveredWeight, unit: 'kg' }, status: 'CREATED', creator: 'Simulator', recycler: 'Recycler-A', producer: 'Dell' });
+      batch = await Batch.create({ batchId, material, claim: { quantity: committedProcessedWeight, unit: 'kg' }, status: 'CREATED', creator: 'Simulator', recycler: 'Recycler-A', producer: 'Dell' });
     }
     
     await SimulationRun.create(simEvent);

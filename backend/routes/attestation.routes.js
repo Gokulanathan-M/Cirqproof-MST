@@ -1,11 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const Attestation = require('../models/Attestation');
+const { requireAuth } = require('../middleware/auth');
+
+router.use(requireAuth);
 
 router.post('/', async (req, res) => {
   try {
     const { batchId, attestor, txHash } = req.body;
-    const attestation = new Attestation({ batchId, attestor, txHash, status: 'PENDING' });
+    const attestation = new Attestation({ batchId, attestor, txHash, status: 'VERIFIED' });
     await attestation.save();
     
     // Update Batch status to VERIFIED

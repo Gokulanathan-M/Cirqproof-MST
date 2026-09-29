@@ -18,18 +18,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
     const initializeAuth = async () => {
       if (token) {
         try {
           const res = await authApi.getMe();
-          if (res.ok) setUser(res.data.user);
+          if (!cancelled && res.ok) setUser(res.data.user);
+          if (!cancelled && !res.ok) {
+            localStorage.removeItem("token");
+            setToken(null);
+            setUser(null);
+          }
         } catch (error) {
           console.error("Auth check failed", error);
-          setToken(null);
-          localStorage.removeItem("token");
+          if (!cancelled) {
+            setToken(null);
+            setUser(null);
+            localStorage.removeItem("token");
+          }
         }
       }
-      setLoading(false);
+      if (!cancelled) setLoading(false);
     };
     initializeAuth();
 
@@ -38,7 +47,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken(null);
     };
     window.addEventListener("auth:unauthorized", handleUnauthorized);
-    return () => window.removeEventListener("auth:unauthorized", handleUnauthorized);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("auth:unauthorized", handleUnauthorized);
+    };
   }, [token]);
 
   const login = (newToken: string, newUser: User) => {

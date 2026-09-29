@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Coins, Lock, ArrowUpRight } from "lucide-react";
 import { batchesApi } from "../api/batches";
+import { settlementApi } from "../api/settlement";
 
 interface SettlementRow {
   batchId: string;
@@ -18,21 +19,25 @@ export function Settlement() {
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await batchesApi.getBatches(1, 50);
-        const batches = res?.data?.batches ?? [];
+        const [batchRes, settlementRes] = await Promise.all([
+          batchesApi.getBatches(1, 100),
+          settlementApi.list(),
+        ]);
+        const batches = batchRes?.data?.batches ?? [];
+        const settlements = settlementRes?.data?.settlements ?? [];
+        const settlementByBatch = new Map<string, any>(settlements.map((settlement: any) => [settlement.batchId, settlement]));
 
         const mapped = batches.map((batch: any) => {
-          let amount = 42000;
-          if (batch.status === "SETTLED") amount = 42000;
-          if (batch.status === "CHALLENGED") amount = 26000;
-          if (batch.status === "UNDER_REVIEW") amount = 31000;
+          const settlement = settlementByBatch.get(batch.batchId);
+          const amount = Number(settlement?.amount ?? 0);
+          const status = settlement?.status ?? "PENDING";
 
           return {
             batchId: batch.batchId,
             material: batch.material,
             amount,
-            status: batch.status === "SETTLED" ? "RELEASED" : batch.status === "CHALLENGED" ? "HELD" : batch.status === "UNDER_REVIEW" ? "PENDING" : "DEPOSITED",
-            txHash: batch.chainRefs?.txHash ?? null,
+            status,
+            txHash: settlement?.txHash ?? null,
           } as SettlementRow;
         });
 
@@ -117,8 +122,12 @@ export function Settlement() {
                     <td className="px-5 py-4 text-slate-100">{row.material}</td>
                     <td className="px-5 py-4 text-slate-200">${row.amount.toLocaleString()}</td>
                     <td className="px-5 py-4">
-                      <span className={`badge ${row.status === "RELEASED" ? "badge-success" : row.status === "HELD" ? "badge-error" : "badge-warning"}`}>
-                        {row.status}
+                      <span className={`badge ${
+                        row.status === "RELEASED" ? "badge-success" :
+                        row.status === "DEPOSITED" || row.status === "HELD" ? "badge-info" :
+                        row.status === "PENDING" ? "badge-neutral" : "badge-warning"
+                      }`}>
+                        {row.status === "DEPOSITED" ? "DEPOSIT" : row.status === "RELEASED" ? "RELEASE" : row.status}
                       </span>
                     </td>
                     <td className="px-5 py-4 font-mono text-xs text-slate-300">{row.txHash ? `${row.txHash.slice(0, 18)}…` : "—"}</td>

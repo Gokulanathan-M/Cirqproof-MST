@@ -11,6 +11,7 @@ const aiReportSchema = new mongoose.Schema({
   missingEvidence: [{ type: String }],
   explanation: { type: String, default: '' },
   recommendation: { type: String, default: '' },
+  result: { type: mongoose.Schema.Types.Mixed, default: null },
 }, { timestamps: true });
 
 module.exports = mongoose.models.AiReport || mongoose.model('AiReport', aiReportSchema);

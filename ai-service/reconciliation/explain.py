@@ -3,7 +3,7 @@ import json
 from openai import OpenAI
 
 # Initialize client with Groq API Key
-API_KEY = os.environ.get("GROQ_API_KEY", "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")
+API_KEY = os.environ.get("GROQ_API_KEY")
 client = OpenAI(
     api_key=API_KEY,
     base_url="https://api.groq.com/openai/v1"

@@ -100,6 +100,7 @@ export function Challenges() {
       <div className="card-glass overflow-hidden">
         <div className="border-b border-white/10 bg-white/[0.02] px-5 py-4">
           <h2 className="text-lg font-semibold text-white">Dispute ledger</h2>
+          <p className="text-xs text-slate-500 mt-0.5">Resolution action is not exposed by the current backend. Disputes require manual off-chain review.</p>
         </div>
 
         <div className="overflow-x-auto">
@@ -128,7 +129,7 @@ export function Challenges() {
                     <td className="px-5 py-4 text-slate-300 max-w-md">{row.reason}</td>
                     <td className="px-5 py-4">
                       <span className={`badge ${row.status === "CHALLENGED" || row.status === "UNDER_REVIEW" ? "badge-error" : "badge-success"}`}>
-                        {row.status.replace("_", " ")}
+                        {row.status.replace(/_/g, " ")}
                       </span>
                     </td>
                     <td className="px-5 py-4 font-mono text-xs text-slate-300">{row.challenge?.txHash ? `${row.challenge.txHash.slice(0, 18)}…` : "—"}</td>

@@ -3,6 +3,25 @@ const crypto = require('node:crypto');
 const router = express.Router();
 const { getRegistryContract } = require('../services/blockchain/contracts');
 const { sendTransaction } = require('../services/blockchain/transaction');
+const { requireAuth } = require('../middleware/auth');
+const Batch = require('../models/Batch');
+const Evidence = require('../models/Evidence');
+const AiReport = require('../models/AiReport');
+const Attestation = require('../models/Attestation');
+const Settlement = require('../models/Settlement');
+
+router.use(requireAuth);
+
+async function latestEvent(contract, eventName, batchId) {
+  try {
+    const logs = await contract.queryFilter(contract.filters[eventName]());
+    const matchingLogs = logs.filter((log) => log.args?.batchId === batchId);
+    const log = matchingLogs.at(-1);
+    return log ? { txHash: log.transactionHash, args: log.args } : null;
+  } catch (_error) {
+    return null;
+  }
+}
 
 function proofHash(value) {
   return crypto.createHash('sha256').update(value).digest('hex');
@@ -53,6 +72,7 @@ router.get('/config', (req, res) => {
         config: {
           network: addresses.network,
           chainId: Number(addresses.chainId),
+          explorerUrl: 'https://testnet.mstscan.com',
           registryAddress: addresses.CirqProofRegistry,
           settlementAddress: addresses.CirqProofSettlement
         }
@@ -60,6 +80,67 @@ router.get('/config', (req, res) => {
     });
   } catch (error) {
     res.status(404).json({ ok: false, error: 'Config not available yet' });
+  }
+});
+
+router.get('/lifecycle/:batchId', async (req, res, next) => {
+  try {
+    const { batchId } = req.params;
+    const [batch, evidence, report, attestation, settlement] = await Promise.all([
+      Batch.findOne({ batchId }).lean(),
+      Evidence.findOne({ batchId }).sort({ timestamp: -1 }).lean(),
+      AiReport.findOne({ batchId }).sort({ createdAt: -1 }).lean(),
+      Attestation.findOne({ batchId }).sort({ createdAt: -1 }).lean(),
+      Settlement.findOne({ batchId }).sort({ createdAt: -1 }).lean(),
+    ]);
+    if (!batch) return res.status(404).json({ ok: false, error: 'Batch not found' });
+
+    const registry = getRegistryContract(false);
+    const settlementContract = require('../services/blockchain/contracts').getSettlementContract(false);
+    const [created, committed, analyzed, submitted, verified, deposited, released] = await Promise.all([
+      latestEvent(registry, 'BatchCreated', batchId),
+      latestEvent(registry, 'EvidenceCommitted', batchId),
+      latestEvent(registry, 'AiResultRecorded', batchId),
+      latestEvent(registry, 'AttestationSubmitted', batchId),
+      latestEvent(registry, 'AttestationVerified', batchId),
+      latestEvent(settlementContract, 'Deposited', batchId),
+      latestEvent(settlementContract, 'Released', batchId),
+    ]);
+    const explorerUrl = 'https://testnet.mstscan.com';
+    const linkFor = (txHash) => txHash ? `${explorerUrl}/tx/${txHash}` : null;
+    const tx = (event) => event?.txHash || null;
+    const evidenceRoot = batch.evidenceRoot ? (batch.evidenceRoot.startsWith('0x') ? batch.evidenceRoot : `0x${batch.evidenceRoot}`) : null;
+    const reportHash = analyzed?.args?.resultHash || null;
+
+    return res.json({
+      ok: true,
+      data: {
+        batchId,
+        status: batch.status,
+        explorerUrl,
+        evidenceRoot,
+        reportHash,
+        attestation: {
+          txHash: tx(submitted) || attestation?.txHash || null,
+          status: verified ? 'VERIFIED' : attestation?.status || (submitted ? 'ATTESTED' : 'PENDING'),
+          attestor: attestation?.attestor || null,
+        },
+        settlement: {
+          amount: settlement?.amount || null,
+          status: settlement?.status || (released ? 'RELEASED' : deposited ? 'DEPOSITED' : 'PENDING'),
+          txHash: tx(released) || settlement?.txHash || null,
+        },
+        lifecycle: [
+          { state: 'CREATED', action: 'CREATE BATCH', txHash: tx(created), explorerUrl: linkFor(tx(created)) },
+          { state: 'EVIDENCE COMMITTED', action: 'COMMIT EVIDENCE', detail: evidenceRoot, txHash: tx(committed), explorerUrl: linkFor(tx(committed)) },
+          { state: 'AI ANALYZED', action: 'RECORD AI RESULT', detail: reportHash, txHash: tx(analyzed), explorerUrl: linkFor(tx(analyzed)) },
+          { state: verified ? 'VERIFIED' : 'ATTESTED', action: 'SUBMIT ATTESTATION', detail: attestation?.attestor || null, txHash: tx(submitted) || attestation?.txHash || null, explorerUrl: linkFor(tx(submitted) || attestation?.txHash) },
+          { state: 'SETTLEMENT', action: released ? 'RELEASE' : deposited ? 'DEPOSIT' : 'AWAITING ESCROW', detail: settlement?.amount || null, txHash: tx(released) || settlement?.txHash || null, explorerUrl: linkFor(tx(released) || settlement?.txHash) },
+        ],
+      },
+    });
+  } catch (error) {
+    return next(error);
   }
 });
 
@@ -116,9 +197,19 @@ router.post('/anchor', async (req, res) => {
       case 'release':
         {
           const current = await settlement.settlements(batchId);
-          result = current.isSettled
-            ? { success: true, transactionHash: null }
-            : await sendTransaction(settlement.release, batchId);
+          if (current.isSettled) {
+            result = { success: true, transactionHash: null };
+            break;
+          }
+          const registryBatch = await registry.batches(batchId);
+          const registryState = Number(registryBatch.state);
+          if (registryState !== 4 && registryState !== 7) {
+            return res.status(409).json({
+              success: false,
+              error: 'Release requires a VERIFIED or RESOLVED batch before settlement.',
+            });
+          }
+          result = await sendTransaction(settlement.release, batchId);
         }
         break;
       case 'hold':

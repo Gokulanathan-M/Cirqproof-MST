@@ -102,9 +102,30 @@ export interface BlockchainAnchor {
 }
 
 export interface BlockchainConfig {
-  rpcUrl: string;
+  network?: string;
+  rpcUrl?: string;
   chainId: number;
+  explorerUrl?: string;
   registryAddress: string;
   settlementAddress: string;
-  deployerAddress: string;
+  deployerAddress?: string;
+}
+
+export interface BlockchainLifecycleItem {
+  state: string;
+  action: string;
+  detail?: string | number | null;
+  txHash: string | null;
+  explorerUrl: string | null;
+}
+
+export interface BlockchainLifecycle {
+  batchId: string;
+  status: string;
+  explorerUrl: string;
+  evidenceRoot: string | null;
+  reportHash: string | null;
+  attestation: { txHash: string | null; status: string; attestor: string | null };
+  settlement: { amount: number | null; status: string; txHash: string | null };
+  lifecycle: BlockchainLifecycleItem[];
 }

@@ -1,34 +1,50 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Activity, ArrowRight, Database, ShieldCheck, TriangleAlert, Play } from "lucide-react";
+import { Activity, ArrowRight, Database, ShieldCheck, TriangleAlert, Play, AlertOctagon, Clock } from "lucide-react";
 import { batchesApi } from "../api/batches";
+import { settlementApi } from "../api/settlement";
 import { Batch } from "../types";
 
 export function Dashboard() {
   const [batches, setBatches] = useState<Batch[]>([]);
+  const [totalBatches, setTotalBatches] = useState(0);
+  const [releasedAmount, setReleasedAmount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    batchesApi.getBatches(1, 5)
-      .then((res) => {
-        if (res.ok) setBatches(res.data.batches);
+    Promise.all([batchesApi.getBatches(1, 100), settlementApi.list()])
+      .then(([batchRes, settlementRes]) => {
+        if (batchRes.ok) {
+          setBatches(batchRes.data.batches);
+          setTotalBatches(batchRes.data.total);
+        }
+        if (settlementRes.ok) {
+          setReleasedAmount(
+            settlementRes.data.settlements
+              .filter((s: any) => s.status === "RELEASED")
+              .reduce((sum: number, s: any) => sum + Number(s.amount || 0), 0),
+          );
+        }
       })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
 
-  const verified = batches.filter((b) => b.status === "VERIFIED" || b.status === "SETTLED").length;
-  const challenged = batches.filter((b) => b.status === "CHALLENGED").length;
-  const total = batches.length || 17;
+  const allBatches = batches;
+  const verified = allBatches.filter((b) => b.status === "VERIFIED" || b.status === "SETTLED").length;
+  const flagged = allBatches.filter((b) => b.status === "CHALLENGED" || b.status === "UNDER_REVIEW").length;
+  const awaitingReview = allBatches.filter((b) => b.status === "AI_ANALYZED").length;
 
   const metrics = [
-    { label: "Total batches", value: loading ? "-" : total, icon: Database, tone: "text-emerald-300" },
-    { label: "Verified", value: loading ? "-" : verified, icon: ShieldCheck, tone: "text-cyan-300" },
-    { label: "Needs review", value: loading ? "-" : Math.max(1, challenged || 2), icon: TriangleAlert, tone: "text-amber-300" },
-    { label: "Settled", value: loading ? "-" : "$42.5k", icon: Activity, tone: "text-emerald-300" },
+    { label: "Total batches", value: loading ? "-" : totalBatches, icon: Database, tone: "text-cyan-300", sub: "All simulation runs" },
+    { label: "Verified", value: loading ? "-" : verified, icon: ShieldCheck, tone: "text-emerald-300", sub: "Attested & settled" },
+    { label: "Awaiting review", value: loading ? "-" : awaitingReview, icon: Clock, tone: "text-amber-300", sub: "AI analyzed, pending human" },
+    { label: "Active disputes", value: loading ? "-" : flagged, icon: AlertOctagon, tone: "text-red-300", sub: "Challenged or under review" },
   ];
 
   const pipeline = ["Evidence", "Reconciliation", "Human Verification", "MST Attestation", "Settlement"];
+
+  const recentBatches = batches.slice(0, 5);
 
   return (
     <div className="animate-fade-in space-y-7">
@@ -36,7 +52,7 @@ export function Dashboard() {
         <div>
           <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-500/5 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-emerald-300">
             <span className="live-indicator" />
-            Verification network status: operational
+            MST testnet configured
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">CirqProof Control Center</h1>
           <p className="mt-2 text-sm text-slate-400">MST testnet / evidence-backed settlement infrastructure</p>
@@ -49,7 +65,7 @@ export function Dashboard() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {metrics.map(({ label, value, icon: Icon, tone }) => (
+        {metrics.map(({ label, value, icon: Icon, tone, sub }) => (
           <div key={label} className="card-glass card-glass-hover p-5">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">{label}</span>
@@ -58,7 +74,7 @@ export function Dashboard() {
               </div>
             </div>
             <div className="mt-5 text-3xl font-bold tracking-tight text-white">{value}</div>
-            <div className="mt-2 text-xs text-slate-400">Live network feed</div>
+            <div className="mt-2 text-xs text-slate-500">{sub}</div>
           </div>
         ))}
       </div>
@@ -85,22 +101,22 @@ export function Dashboard() {
 
         <div className="card-glass p-5">
           <div className="mb-5 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-white">Network health</h2>
-            <span className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2 py-1 text-[10px] uppercase tracking-[0.2em] text-emerald-300">Healthy</span>
+            <h2 className="text-lg font-semibold text-white">Settlement summary</h2>
+            <span className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2 py-1 text-[10px] uppercase tracking-[0.2em] text-emerald-300">Application data</span>
           </div>
 
           <div className="space-y-4 text-sm text-slate-300">
             <div className="flex items-center justify-between rounded-xl border border-white/10 bg-slate-950/40 p-3">
-              <span>Oracles</span>
-              <span className="font-semibold text-emerald-300">12</span>
+              <span>Total batches</span>
+              <span className="font-semibold text-cyan-300">{loading ? "—" : totalBatches}</span>
             </div>
             <div className="flex items-center justify-between rounded-xl border border-white/10 bg-slate-950/40 p-3">
-              <span>Validators</span>
-              <span className="font-semibold text-cyan-300">8</span>
+              <span>Verified batches</span>
+              <span className="font-semibold text-emerald-300">{loading ? "—" : verified}</span>
             </div>
             <div className="flex items-center justify-between rounded-xl border border-white/10 bg-slate-950/40 p-3">
-              <span>Settlement queue</span>
-              <span className="font-semibold text-amber-300">3 pending</span>
+              <span>Released escrow</span>
+              <span className="font-semibold text-emerald-300">{loading ? "—" : `$${releasedAmount.toLocaleString()}`}</span>
             </div>
           </div>
         </div>
@@ -130,12 +146,12 @@ export function Dashboard() {
                 <tr>
                   <td colSpan={4} className="px-5 py-10 text-center text-slate-400">Loading batches…</td>
                 </tr>
-              ) : batches.length === 0 ? (
+              ) : recentBatches.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-5 py-10 text-center text-slate-400">No activity found</td>
+                  <td colSpan={4} className="px-5 py-10 text-center text-slate-400">No activity found — run a simulation to get started</td>
                 </tr>
               ) : (
-                batches.map((batch) => (
+                recentBatches.map((batch) => (
                   <tr key={batch.batchId} className="transition-colors hover:bg-white/[0.03]">
                     <td className="px-5 py-4 font-mono text-cyan-300">
                       <Link to={`/batches/${batch.batchId}`} className="hover:underline">{batch.batchId}</Link>
@@ -146,14 +162,14 @@ export function Dashboard() {
                         className={`badge ${
                           batch.status === "VERIFIED" || batch.status === "SETTLED"
                             ? "badge-success"
-                            : batch.status === "CHALLENGED"
+                            : batch.status === "CHALLENGED" || batch.status === "UNDER_REVIEW"
                               ? "badge-error"
-                              : batch.status === "AI_ANALYZED" || batch.status === "UNDER_REVIEW"
+                              : batch.status === "AI_ANALYZED"
                                 ? "badge-warning"
                                 : "badge-neutral"
                         }`}
                       >
-                        {batch.status.replace("_", " ")}
+                        {batch.status.replace(/_/g, " ")}
                       </span>
                     </td>
                     <td className="px-5 py-4 text-slate-400">{new Date(batch.createdAt).toLocaleDateString()}</td>

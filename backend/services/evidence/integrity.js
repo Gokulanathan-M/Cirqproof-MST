@@ -37,6 +37,9 @@ async function overwriteEvidenceForSimulation(evidenceId, replacement) {
   if (!evidence) throw Object.assign(new Error('Evidence not found'), { status: 404 });
   const content = Buffer.isBuffer(replacement) ? replacement : Buffer.from(JSON.stringify(replacement));
   await overwriteArtifact(evidence.fileLocation, content);
+  
+  await EvidenceModel.updateOne({ evidenceId }, { $set: { data: replacement } });
+  
   return evidence;
 }
 
