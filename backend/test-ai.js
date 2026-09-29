@@ -10,12 +10,21 @@ async function run() {
   
   const batch = await Batch.findOne({ batchId: 'CP-RAND-1' });
   const evidence = await Evidence.find({ batchId: 'CP-RAND-1' });
+
+  if (!batch) {
+    console.log('Skipping AI probe: CP-RAND-1 fixture is not present.');
+    await mongoose.disconnect();
+    return;
+  }
   
   console.log('Sending to AI Service...');
   const result = await reconcile(batch.toObject(), evidence.map(e => e.toObject()));
   console.log('AI Response:', JSON.stringify(result, null, 2));
   
-  process.exit(0);
+  await mongoose.disconnect();
 }
 
-run().catch(console.error);
+run().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

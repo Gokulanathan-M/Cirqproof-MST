@@ -71,7 +71,7 @@ export function BatchDetail() {
         const updated = await batchesApi.getBatch(batch.batchId);
         setBatch(updated.data.batch);
       }
-    } catch (err) {
+    } catch {
       alert("Reconciliation failed");
     } finally {
       setActionLoading(false);
