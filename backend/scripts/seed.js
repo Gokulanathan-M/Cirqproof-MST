@@ -16,6 +16,7 @@ const organizations = [
 async function seed() {
   if (!process.env.MONGODB_URI) throw new Error('MONGODB_URI is required');
   await mongoose.connect(process.env.MONGODB_URI);
+
   const savedOrganizations = new Map();
   for (const organization of organizations) {
     savedOrganizations.set(organization.name, await Organization.findOneAndUpdate(
@@ -23,19 +24,21 @@ async function seed() {
     ));
   }
 
-  const passwordHash = await bcrypt.hash(process.env.SEED_PASSWORD || 'CirqProof-Demo-2026!', 12);
+  const passwordHash = await bcrypt.hash(process.env.SEED_PASSWORD || 'admin123', 12);
   const accounts = [
-    { name: 'Dell', email: 'dell@example.test', role: 'PRODUCER', organization: 'Dell' },
-    { name: 'Recycler-A', email: 'recycler@example.test', role: 'RECYCLER', organization: 'Recycler-A' },
-    { name: 'Auditor-B', email: 'auditor@example.test', role: 'AUDITOR', organization: 'Auditor-B' },
-    { name: 'Buyer', email: 'buyer@example.test', role: 'BUYER', organization: 'Buyer' },
+    { name: 'CirqProof Admin', email: 'admin@cirqproof.com', role: 'ADMIN', organization: null },
+    { name: 'Producer', email: 'producer@cirqproof.io', role: 'PRODUCER', organization: 'Dell' },
+    { name: 'Recycler', email: 'recycler@cirqproof.io', role: 'RECYCLER', organization: 'Recycler-A' },
+    { name: 'Auditor', email: 'auditor@cirqproof.io', role: 'AUDITOR', organization: 'Auditor-B' },
+    { name: 'Buyer', email: 'buyer@cirqproof.io', role: 'BUYER', organization: 'Buyer' },
   ];
+
   for (const account of accounts) {
     await User.findOneAndUpdate({ email: account.email }, {
       name: account.name,
       email: account.email,
       role: account.role,
-      organization: savedOrganizations.get(account.organization)._id,
+      organization: account.organization ? savedOrganizations.get(account.organization)._id : null,
       passwordHash,
     }, { upsert: true, new: true, setDefaultsOnInsert: true });
   }
@@ -44,7 +47,7 @@ async function seed() {
     batchId: 'CP-2026-001', producer: 'Dell', recycler: 'Recycler-A', material: 'recycled polymer',
     claim: { quantity: 900, unit: 'kg' }, status: 'CREATED',
   }, { upsert: true, new: true, setDefaultsOnInsert: true });
-  console.log('Seeded organizations, demo accounts, and CP-2026-001. Change demo passwords before deployment.');
+  console.log('Seeded CirqProof demo accounts with password admin123. Change demo passwords before deployment.');
 }
 
 seed().catch((error) => {

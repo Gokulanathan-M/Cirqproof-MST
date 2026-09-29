@@ -39,7 +39,10 @@ async function getEvidenceRoot(batchId) {
 
 async function getLatestAiReport(batchId) {
   const batch = await getBatch(batchId);
-  if (batch?.aiReport) return batch.populate('aiReport');
+  if (batch?.aiReport) {
+    await batch.populate('aiReport');
+    return batch.aiReport;
+  }
   const AiReport = require('../../models/AiReport');
   return AiReport.findOne({ batchId }).sort({ createdAt: -1 });
 }

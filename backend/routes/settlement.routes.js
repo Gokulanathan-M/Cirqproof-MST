@@ -21,6 +21,8 @@ router.post('/release', async (req, res) => {
       { status: 'RELEASED', txHash },
       { new: true }
     );
+    const Batch = require('../models/Batch');
+    await Batch.findOneAndUpdate({ batchId }, { status: 'SETTLED' });
     res.json({ success: true, settlement });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });

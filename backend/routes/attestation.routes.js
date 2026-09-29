@@ -7,6 +7,14 @@ router.post('/', async (req, res) => {
     const { batchId, attestor, txHash } = req.body;
     const attestation = new Attestation({ batchId, attestor, txHash, status: 'PENDING' });
     await attestation.save();
+    
+    // Update Batch status to VERIFIED
+    const Batch = require('../models/Batch');
+    await Batch.findOneAndUpdate(
+      { batchId, status: { $ne: 'SETTLED' } },
+      { status: 'VERIFIED' },
+    );
+    
     res.status(201).json({ success: true, attestation });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });

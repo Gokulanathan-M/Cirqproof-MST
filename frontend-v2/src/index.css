@@ -1,0 +1,129 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --bg-main: #050708;
+  --bg-surface: #0a0d0f;
+  --bg-surface-alt: #111518;
+  --bg-card: rgba(15, 20, 24, 0.78);
+  --bg-panel: rgba(11, 15, 18, 0.78);
+  --border-light: rgba(148, 163, 184, 0.18);
+  --border-strong: rgba(16, 185, 129, 0.26);
+  --text-main: #f8fafc;
+  --text-muted: #9aa7b5;
+  --text-subtle: #697586;
+  --primary: #34d399;
+  --primary-strong: #10b981;
+  --secondary: #67e8f9;
+  --warning: #fbbf24;
+  --danger: #f87171;
+  --success: #4ade80;
+  --ring: rgba(52, 211, 153, 0.35);
+  --shadow-soft: 0 24px 80px rgba(2, 6, 23, 0.72);
+}
+
+* { box-sizing: border-box; }
+
+html {
+  background: var(--bg-main);
+  color: var(--text-main);
+  font-family: 'Inter', sans-serif;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(52, 211, 153, 0.12), transparent 24%),
+    radial-gradient(circle at 80% 22%, rgba(103, 232, 249, 0.10), transparent 24%),
+    linear-gradient(180deg, #050708 0%, #090d0f 100%);
+  color: var(--text-main);
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.font-mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+@layer components {
+  .card-glass {
+    @apply relative overflow-hidden rounded-2xl border border-white/10 bg-slate-900/70 shadow-[0_0_0_1px_rgba(15,23,42,0.9),0_30px_80px_rgba(2,6,23,0.85)] backdrop-blur-xl;
+  }
+
+  .card-glass::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+  }
+
+  .card-glass-hover {
+    @apply transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-400/30 hover:shadow-[0_0_0_1px_rgba(52,211,153,0.15),0_20px_60px_rgba(5,12,14,0.8)];
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-600 px-4 py-3 font-semibold text-slate-950 shadow-[0_0_0_1px_rgba(16,185,129,0.18),0_20px_36px_rgba(16,185,129,0.28)] transition-all duration-200 hover:brightness-110 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 py-3 font-medium text-slate-100 transition-all duration-200 hover:border-emerald-400/40 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em];
+  }
+
+  .badge-neutral { @apply border-white/10 bg-white/5 text-slate-300; }
+  .badge-success { @apply border-emerald-400/30 bg-emerald-500/10 text-emerald-300; }
+  .badge-warning { @apply border-amber-400/30 bg-amber-500/10 text-amber-300; }
+  .badge-error { @apply border-red-400/30 bg-red-500/10 text-red-300; }
+  .badge-info { @apply border-cyan-400/30 bg-cyan-500/10 text-cyan-300; }
+}
+
+@keyframes pulse-glow {
+  0% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.28); }
+  70% { box-shadow: 0 0 0 10px rgba(52, 211, 153, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.35s ease-out;
+}
+
+.live-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: var(--primary);
+  animation: pulse-glow 2s infinite;
+}
+
+.bg-grid {
+  background-image: linear-gradient(rgba(148, 163, 184, 0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.34);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.52); }

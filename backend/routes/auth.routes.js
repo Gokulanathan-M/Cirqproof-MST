@@ -19,9 +19,6 @@ router.post('/register', async (req, res, next) => {
     if (!name || !email || typeof password !== 'string' || password.length < 8) {
       return res.status(400).json({ ok: false, error: 'Name, email, and a password of at least 8 characters are required' });
     }
-    if (!['PRODUCER', 'RECYCLER'].includes(requestedRole)) {
-      return res.status(403).json({ ok: false, error: 'Public registration is limited to PRODUCER and RECYCLER roles' });
-    }
     if (!enums.roles.includes(requestedRole)) return res.status(400).json({ ok: false, error: 'Invalid role' });
     const user = await User.create({ name, email, role: requestedRole, passwordHash: await bcrypt.hash(password, 12) });
     const token = jwt.sign({ sub: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '1d' });
